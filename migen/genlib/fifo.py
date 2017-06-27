@@ -169,12 +169,12 @@ class AsyncFIFO(Module, _FIFOInterface):
     def __init__(self, width, depth):
         _FIFOInterface.__init__(self, width, depth)
 
+        depth_bits = log2_int(depth, True)
+        
         self.level_rd = Signal(depth_bits+1)
         self.level_wr = Signal(depth_bits+1)
         
         ###
-
-        depth_bits = log2_int(depth, True)
 
         produce = ClockDomainsRenamer("write")(GrayCounter(depth_bits+1))
         consume = ClockDomainsRenamer("read")(GrayCounter(depth_bits+1))
