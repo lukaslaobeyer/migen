@@ -159,12 +159,19 @@ class AsyncFIFO(Module, _FIFOInterface):
     other names.
 
     {interface}
+    level_rd : out
+        Minimum number of readable words in the FIFO
+    level_wr : out
+        Maximum number of words in FIFO
     """
     __doc__ = __doc__.format(interface=_FIFOInterface.__doc__)
 
     def __init__(self, width, depth):
         _FIFOInterface.__init__(self, width, depth)
 
+        self.level_rd = Signal(depth_bits+1)
+        self.level_wr = Signal(depth_bits+1)
+        
         ###
 
         depth_bits = log2_int(depth, True)
@@ -178,11 +185,15 @@ class AsyncFIFO(Module, _FIFOInterface):
         ]
 
         produce_rdomain = Signal(depth_bits+1)
+        produce_rdomain_bin = Signal(depth_bits+1)
         produce.q.attr.add("no_retiming")
         self.specials += MultiReg(produce.q, produce_rdomain, "read")
+        self.specials += MultiReg(produce.q_binary, produce_rdomain_bin, "read")
         consume_wdomain = Signal(depth_bits+1)
+        consume_wdomain_bin = Signal(depth_bits+1)
         consume.q.attr.add("no_retiming")
         self.specials += MultiReg(consume.q, consume_wdomain, "write")
+        self.specials += MultiReg(consume.q_binary, consume_wdomain_bin, "write")
         if depth_bits == 1:
             self.comb += self.writable.eq((produce.q[-1] == consume_wdomain[-1])
                 | (produce.q[-2] == consume_wdomain[-2]))
@@ -208,4 +219,9 @@ class AsyncFIFO(Module, _FIFOInterface):
         self.comb += [
             rdport.adr.eq(consume.q_next_binary[:-1]),
             self.dout.eq(rdport.dat_r)
+        ]
+
+        self.comb += [
+            self.level_rd.eq(produce_rdomain_bin-consume.q_binary),
+            self.level_wr.eq(produce.q_binary-consume_wdomain_bin)
         ]
